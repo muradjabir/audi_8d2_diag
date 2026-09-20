@@ -5,6 +5,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -21,10 +24,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
@@ -37,13 +40,13 @@ jobs:
       - name: Build with PyInstaller (Mac)
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --noconfirm --onefile --windowed --add-data "templates:templates" --add-data "static:static" --name "Audi_Diag" app.py
+          pyinstaller --noconfirm --onefile --add-data "templates:templates" --add-data "static:static" --name "Audi_Diag" app.py
           mv "dist/Audi_Diag" "dist/${{ matrix.artifact_name }}"
 
       - name: Build with PyInstaller (Windows)
         if: runner.os == 'Windows'
         run: |
-          pyinstaller --noconfirm --onefile --windowed --add-data "templates;templates" --add-data "static;static" --name "Audi_Diag" app.py
+          pyinstaller --noconfirm --onefile --add-data "templates;templates" --add-data "static;static" --name "Audi_Diag" app.py
           Move-Item -Path "dist\Audi_Diag.exe" -Destination "dist\${{ matrix.artifact_name }}"
 
       - name: Upload binaries to release
