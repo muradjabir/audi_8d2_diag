@@ -1,0 +1,56 @@
+name: Build Executables
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: Audi_Diag_Mac
+            executable_name: app
+          - os: windows-latest
+            artifact_name: Audi_Diag_Windows.exe
+            executable_name: app.exe
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller (Mac)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --add-data "templates:templates" --add-data "static:static" --name "Audi_Diag" app.py
+          mv "dist/Audi_Diag" "dist/${{ matrix.artifact_name }}"
+
+      - name: Build with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --add-data "templates;templates" --add-data "static;static" --name "Audi_Diag" app.py
+          Move-Item -Path "dist\Audi_Diag.exe" -Destination "dist\${{ matrix.artifact_name }}"
+
+      - name: Upload binaries to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If triggered by release, upload to the tag. If manually dispatched, upload to v1.0.0.
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG_NAME" ]; then TAG_NAME="v1.0.0"; fi
+          gh release upload $TAG_NAME "dist/${{ matrix.artifact_name }}" --clobber
